@@ -36,9 +36,7 @@ from gslib.util import GetMaxRetryDelay
 from gslib.util import GetNewHttp
 from gslib.util import GetNumRetries
 
-
 TRANSLATABLE_APITOOLS_EXCEPTIONS = (apitools_exceptions.HttpError)
-
 
 if os.environ.get('CLOUDSDK_WRAPPER'):
   _INSUFFICIENT_OAUTH2_SCOPE_MESSAGE = (
@@ -52,7 +50,7 @@ else:
 
 class KmsApi(object):
   """Wraps calls to the Cloud KMS v1 interface via apitools."""
-  
+
   def __init__(self, logger=None, credentials=None, debug=0):
     """Performs necessary setup for interacting with Google Cloud IAM.
 
@@ -97,8 +95,11 @@ class KmsApi(object):
     log_response = (debug >= 3)
 
     self.api_client = apitools_client.CloudkmsV1(
-        url=self.url_base, http=self.http, log_request=log_request,
-        log_response=log_response, credentials=self.credentials)
+        url=self.url_base,
+        http=self.http,
+        log_request=log_request,
+        log_response=log_response,
+        credentials=self.credentials)
 
     self.api_client.max_retry_wait = self.max_retry_wait
     self.api_client.num_retries = self.num_retries
@@ -108,22 +109,26 @@ class KmsApi(object):
       # anonymous requests.
       self.api_client.AddGlobalParam('key',
                                      u'AIzaSyDnacJHrKma0048b13sh8cgxNUwulubmJM')
-    
+
   def GetKeyIamPolicy(self, key_name):
-    request = apitools_messages.CloudkmsProjectsLocationsKeyRingsCryptoKeysGetIamPolicyRequest(resource = key_name)
+    request = apitools_messages.CloudkmsProjectsLocationsKeyRingsCryptoKeysGetIamPolicyRequest(
+        resource=key_name)
     try:
-      return self.api_client.projects_locations_keyRings_cryptoKeys.GetIamPolicy(request)
+      return self.api_client.projects_locations_keyRings_cryptoKeys.GetIamPolicy(
+          request)
     except TRANSLATABLE_APITOOLS_EXCEPTIONS as e:
       self._TranslateExceptionAndRaise(e, key_name=key_name)
-    
+
   def SetKeyIamPolicy(self, key_name, policy):
     policy_request = apitools_messages.SetIamPolicyRequest(policy=policy)
-    request = apitools_messages.CloudkmsProjectsLocationsKeyRingsCryptoKeysSetIamPolicyRequest(resource = key_name, setIamPolicyRequest=policy_request)
+    request = apitools_messages.CloudkmsProjectsLocationsKeyRingsCryptoKeysSetIamPolicyRequest(
+        resource=key_name, setIamPolicyRequest=policy_request)
     try:
-      return self.api_client.projects_locations_keyRings_cryptoKeys.SetIamPolicy(request)
+      return self.api_client.projects_locations_keyRings_cryptoKeys.SetIamPolicy(
+          request)
     except TRANSLATABLE_APITOOLS_EXCEPTIONS as e:
       self._TranslateExceptionAndRaise(e, key_name=key_name)
-    
+
   def _TranslateExceptionAndRaise(self, e, key_name=None):
     """Translates an HTTP exception and raises the translated or original value.
 
@@ -136,8 +141,8 @@ class KmsApi(object):
       translatable.
     """
     if self.logger.isEnabledFor(logging.DEBUG):
-      self.logger.debug(
-          'TranslateExceptionAndRaise: %s', traceback.format_exc())
+      self.logger.debug('TranslateExceptionAndRaise: %s',
+                        traceback.format_exc())
     translated_exception = self._TranslateApitoolsException(
         e, key_name=key_name)
     if translated_exception:
@@ -193,31 +198,33 @@ class KmsApi(object):
         # It is possible that the Project ID is incorrect.  Unfortunately the
         # JSON API does not give us much information about what part of the
         # request was bad.
-        return BadRequestException(message or 'Bad Request',
-                                   status=e.status_code)
+        return BadRequestException(
+            message or 'Bad Request', status=e.status_code)
       elif e.status_code == 401:
         if 'Login Required' in str(e):
           return AccessDeniedException(
-              message or 'Access denied: login required.',
-              status=e.status_code)
+              message or 'Access denied: login required.', status=e.status_code)
         elif 'insufficient_scope' in str(e):
           # If the service includes insufficient scope error detail in the
           # response body, this check can be removed.
           return AccessDeniedException(
-              _INSUFFICIENT_OAUTH2_SCOPE_MESSAGE, status=e.status_code,
+              _INSUFFICIENT_OAUTH2_SCOPE_MESSAGE,
+              status=e.status_code,
               body=self._GetAcceptableScopesFromHttpError(e))
       elif e.status_code == 403:
         if 'The account for the specified project has been disabled' in str(e):
-          return AccessDeniedException(message or 'Account disabled.',
-                                       status=e.status_code)
+          return AccessDeniedException(
+              message or 'Account disabled.', status=e.status_code)
         elif 'Daily Limit for Unauthenticated Use Exceeded' in str(e):
           return AccessDeniedException(
               message or 'Access denied: quota exceeded. '
               'Is your project ID valid?',
               status=e.status_code)
         elif 'User Rate Limit Exceeded' in str(e):
-          return AccessDeniedException('Rate limit exceeded. Please retry this '
-                                       'request later.', status=e.status_code)
+          return AccessDeniedException(
+              'Rate limit exceeded. Please retry this '
+              'request later.',
+              status=e.status_code)
         elif 'Access Not Configured' in str(e):
           return AccessDeniedException(
               'Access Not Configured. Please go to the Google Cloud Platform '
@@ -229,11 +236,12 @@ class KmsApi(object):
           # If the service includes insufficient scope error detail in the
           # response body, this check can be removed.
           return AccessDeniedException(
-              _INSUFFICIENT_OAUTH2_SCOPE_MESSAGE, status=e.status_code,
+              _INSUFFICIENT_OAUTH2_SCOPE_MESSAGE,
+              status=e.status_code,
               body=self._GetAcceptableScopesFromHttpError(e))
         else:
-          return AccessDeniedException(message or e.message or key_name,
-                                       status=e.status_code)
+          return AccessDeniedException(
+              message or e.message or key_name, status=e.status_code)
       elif e.status_code == 404:
         return NotFoundException(e.message, status=e.status_code)
 

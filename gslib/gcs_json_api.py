@@ -406,7 +406,7 @@ class GcsJsonApi(CloudApi):
     # For blank metadata objects, we need to explicitly call
     # them out to apitools so it will send/erase them.
     apitools_include_fields = []
-    for metadata_field in ('encryption', 'metadata', 'lifecycle', 'logging', 
+    for metadata_field in ('encryption', 'metadata', 'lifecycle', 'logging',
                            'versioning', 'website', 'billing'):
       attr = getattr(bucket_metadata, metadata_field, None)
       if attr and not encoding.MessageToDict(attr):
