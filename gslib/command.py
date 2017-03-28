@@ -449,7 +449,7 @@ class Command(HelpProvider):
   command_spec = None
 
   _commands_with_subcommands_and_subopts = ['acl', 'defacl', 'logging', 'web',
-                                            'notification']
+                                            'notification', 'kms']
 
   # This keeps track of the recursive depth of the current call to Apply.
   recursive_apply_level = 0
