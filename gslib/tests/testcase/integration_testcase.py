@@ -515,11 +515,11 @@ class GsUtilIntegrationTestCase(base.GsUtilTestCase):
       Apitools Bucket for the created bucket.
     """
     bucket_name = bucket_name or self.MakeTempName('bucket')
-    bucket_metadata = None
+    bucket_metadata = apitools_messages.Bucket(name=bucket_name.lower())
     if storage_class:
-      bucket_metadata = apitools_messages.Bucket(
-          name=bucket_name.lower(),
-          storageClass=storage_class)
+      bucket_metadata.storageClass = storage_class
+    if location:
+      bucket_metadata.location = location
 
     # TODO: Add retry and exponential backoff.
     bucket = self.json_api.CreateBucket(bucket_name.lower(),
@@ -697,6 +697,8 @@ class GsUtilIntegrationTestCase(base.GsUtilTestCase):
             cmd_str, tab_complete_result_file.name)
         env = os.environ.copy()
         env['_ARGCOMPLETE'] = '1'
+        if 'COMP_WORDBREAKS' in env:
+          env['_ARGCOMPLETE_COMP_WORDBREAKS'] = env['COMP_WORDBREAKS']
         env['COMP_LINE'] = cmd_str
         env['COMP_POINT'] = str(len(cmd_str))
         subprocess.call(cmd_str_with_result_redirect, env=env, shell=True)

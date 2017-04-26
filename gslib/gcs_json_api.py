@@ -407,7 +407,7 @@ class GcsJsonApi(CloudApi):
     # them out to apitools so it will send/erase them.
     apitools_include_fields = []
     for metadata_field in ('encryption', 'metadata', 'lifecycle', 'logging',
-                           'versioning', 'website', 'billing'):
+                           'versioning', 'website'):
       attr = getattr(bucket_metadata, metadata_field, None)
       if attr and not encoding.MessageToDict(attr):
         setattr(bucket_metadata, metadata_field, None)
@@ -809,9 +809,6 @@ class GcsJsonApi(CloudApi):
     if object_metadata.customerEncryption:
       # Object is encrypted.
       return True
-
-    if object_metadata.kmsKeyName:
-      return False
 
     need_hash = fields is None or 'md5Hash' in fields or 'crc32c' in fields
     has_hash = object_metadata.md5Hash or object_metadata.crc32c
@@ -1376,7 +1373,6 @@ class GcsJsonApi(CloudApi):
               sourceObject=src_obj_metadata.name,
               destinationBucket=dst_obj_metadata.bucket,
               destinationObject=dst_obj_metadata.name,
-              destinationKmsKeyName=dst_obj_metadata.kmsKeyName,
               projection=projection, object=dst_obj_metadata,
               sourceGeneration=src_generation,
               ifGenerationMatch=preconditions.gen_match,
