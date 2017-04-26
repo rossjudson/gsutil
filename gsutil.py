@@ -110,6 +110,7 @@ if not UsingCrcmodExtension(crcmod):
 def RunMain():
   # pylint: disable=g-import-not-at-top
   import gslib.__main__
+  import pydevd; pydevd.settrace(suspend=False)
   sys.exit(gslib.__main__.main())
 
 if __name__ == '__main__':
