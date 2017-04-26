@@ -1151,6 +1151,8 @@ def PrintFullInfoAboutObject(bucket_listing_ref, incl_acl=True):
         'Update time', obj.updated.strftime('%a, %d %b %Y %H:%M:%S GMT'))
   if obj.storageClass:
     print MakeMetadataLine('Storage class', obj.storageClass)
+  if obj.kmsKeyName:
+    print MakeMetadataLine('KMS key', obj.kmsKeyName)
   if obj.cacheControl:
     print MakeMetadataLine('Cache-Control', obj.cacheControl)
   if obj.contentDisposition:

@@ -50,12 +50,12 @@ _SYNOPSIS = (_AUTHORIZE_SYNOPSIS + _ENCRYPTION_SYNOPSIS.lstrip('\n') +
              _SERVICEACCOUNT_SYNOPSIS.lstrip('\n') + '\n')
 
 _AUTHORIZE_DESCRIPTION = """
-<B>AUTHORIZE</B>
+  <B>AUTHORIZE</B>
   The authorize sub-command ensures that the default project (or a supplied
-  project) has a service account created for it, then adds appropriate 
-  encrypt/decrypt permissions to Cloud KMS resources such that GCS
-  can write and read Cloud KMS-encrypted objects.
-  
+  project) has a GCS-owned service account created for it, and if not, it
+  creates one. It then adds appropriate encrypt/decrypt permissions to Cloud KMS
+  resources such that the GCS service account can write and read Cloud 
+  KMS-encrypted objects.  
   <B>Examples</B>
   
   Authorize the default project to use a Cloud KMS key:
@@ -84,17 +84,17 @@ _ENCRYPTION_DESCRIPTION = """
     
   Clear the KMS key so newly written objects will not be encrypted:
   
-    gsutil kms encryption -c gs://my_bucket
+    gsutil kms encryption -d gs://my_bucket
 """
 
 _SERVICEACCOUNT_DESCRIPTION = """
 <B>SERVICEACCOUNT</B>
-  The serviceaccount sub-command displays the service account associated
-  with the default project, or with a specified project.
+  The serviceaccount sub-command displays the GCS-owned service account
+  associated with your default project, or with the specified project.
   
   <B>Examples</B>
   
-  Show the service account for the default project:
+  Show the service account for your default project:
   
     gsutil kms serviceaccount
     
@@ -131,11 +131,10 @@ class KmsCommand(Command):
 
   command_spec = Command.CreateCommandSpec(
       'kms',
-      command_name_aliases=['authorize', 'encryption', 'serviceaccount'],
       usage_synopsis=_SYNOPSIS,
       min_args=0,
       max_args=NO_MAX,
-      supported_sub_args='ck:p:',
+      supported_sub_args='dk:p:',
       file_url_ok=False,
       provider_url_ok=False,
       urls_start_arg=1,
@@ -149,7 +148,7 @@ class KmsCommand(Command):
   # Help specification. See help_provider.py for documentation.
   help_spec = Command.HelpSpec(
       help_name='kms',
-      help_name_aliases=['authorize', 'serviceaccount'],
+      help_name_aliases=[],
       help_type='command_help',
       help_one_line_summary='Configure Cloud KMS integration',
       help_text=_DETAILED_HELP_TEXT,
@@ -157,7 +156,8 @@ class KmsCommand(Command):
           'authorize': _authorize_help_text,
           'encryption': _encryption_help_text,
           'serviceaccount': _serviceaccount_help_text
-      },)
+      },
+  )
 
   def _GatherSubOptions(self):
     self.CheckArguments()
@@ -171,13 +171,13 @@ class KmsCommand(Command):
           self.project_id = a
         elif o == '-k':
           self.kms_key = a
-        elif o == '-c':
+        elif o == '-d':
           self.clear_kms_key = True
     if not self.project_id:
       self.project_id = PopulateProjectId(None)
 
   def _AuthorizeProject(self, project_id, kms_key):
-    # Request the service account for that project, which might create it
+    # Request the GCS-owned service account for project_id (may create)
     service_account = self.gsutil_api.GetProjectServiceAccount(
         project_id, provider='gs').email_address
 
@@ -235,6 +235,7 @@ class KmsCommand(Command):
 
     if self.clear_kms_key:
       bucket_metadata.encryption = apitools_messages.Bucket.EncryptionValue()
+      print('Clearing default encryption key on %s' % bucket_name)
       self.gsutil_api.PatchBucket(
           bucket_name,
           bucket_metadata,
@@ -250,15 +251,14 @@ class KmsCommand(Command):
         print('Bucket %s has no default encryption key' % bucket_name)
       return 0
 
-    kms_key = self.kms_key
     bucket_project_number = bucket_metadata.projectNumber
     encryption = apitools_messages.Bucket.EncryptionValue(
-        defaultKmsKeyName=kms_key)
+        defaultKmsKeyName=self.kms_key)
     bucket_metadata.encryption = encryption
-    service_account = self._AuthorizeProject(bucket_project_number, kms_key)
+    service_account = self._AuthorizeProject(bucket_project_number, self.kms_key)
     if service_account:
       print('%s service account %s is now authorized to use %s' %
-            (bucket_name, service_account, kms_key))
+            (bucket_name, service_account, self.kms_key))
     self.gsutil_api.PatchBucket(
         bucket_name,
         bucket_metadata,
@@ -279,7 +279,6 @@ class KmsCommand(Command):
     if not self.project_id:
       self.project_id = PopulateProjectId(None)
 
-    # Determine the project, either from the provided buckets or the default
     # Request the service account for that project, which might create it
     self.logger.debug('Checking service account for project %s',
                       self.project_id)

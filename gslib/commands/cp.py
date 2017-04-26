@@ -572,6 +572,10 @@ _OPTIONS_TEXT = """
   -e             Exclude symlinks. When specified, symbolic links will not be
                  copied.
 
+  -k <KMS key>   Objects written will be encrypted with a Cloud KMS key. The
+                 cloud project owning the target bucket must be authorized to
+                 use the KMS key; see gsutil help kms for details.
+
   -I             Causes gsutil to read the list of files or objects to copy from
                  stdin. This allows you to run a program that generates the list
                  of files to upload/download.
@@ -737,7 +741,7 @@ _DETAILED_HELP_TEXT = '\n\n'.join([_SYNOPSIS_TEXT,
                                    _OPTIONS_TEXT])
 
 
-CP_SUB_ARGS = 'a:AcDeIL:MNnpPrRs:tUvz:Z'
+CP_SUB_ARGS = 'a:AcDeIk:L:MNnpPrRs:tUvz:Z'
 
 
 def _CopyFuncWrapper(cls, args, thread_state=None):
@@ -1136,6 +1140,7 @@ class CpCommand(Command):
 
     test_callback_file = None
     dest_storage_class = None
+    kms_keyname = None
 
     # self.recursion_requested initialized in command.py (so can be checked
     # in parent class for all commands).
@@ -1159,6 +1164,8 @@ class CpCommand(Command):
           test_callback_file = a
         elif o == '-I':
           read_args_from_stdin = True
+        elif o == '-k':
+          kms_keyname = a
         elif o == '-L':
           use_manifest = True
           self.manifest = Manifest(a)
@@ -1211,4 +1218,5 @@ class CpCommand(Command):
         canned_acl=canned_acl,
         skip_unsupported_objects=self.skip_unsupported_objects,
         test_callback_file=test_callback_file,
-        dest_storage_class=dest_storage_class)
+        dest_storage_class=dest_storage_class,
+        kms_keyname=kms_keyname)

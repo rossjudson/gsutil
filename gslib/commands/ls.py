@@ -440,8 +440,9 @@ class LsCommand(Command):
         bucket_fields = ['id']
       elif listing_style == ListingStyle.LONG_LONG:
         bucket_fields = ['location', 'storageClass', 'versioning', 'acl',
-                         'defaultObjectAcl', 'website', 'logging', 'cors',
-                         'lifecycle', 'billing', 'timeCreated', 'updated']
+                         'defaultObjectAcl', 'encryption', 'website', 'logging',
+                         'cors', 'lifecycle', 'billing', 'timeCreated',
+                         'updated']
       if storage_url.IsProvider():
         # Provider URL: use bucket wildcard to list buckets.
         for blr in self.WildcardIterator(

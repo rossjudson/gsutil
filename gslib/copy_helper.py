@@ -162,7 +162,7 @@ global global_copy_helper_opts
 global open_files_map, open_files_lock
 open_files_map = (
     AtomicDict() if not CheckMultiprocessingAvailableAndInit().is_available
-    else AtomicDict(manager=gslib.util.manager))
+    else AtomicDict(manager=gslib.util.manager))  # pylint: disable=invalid-name
 
 # We don't allow multiple processes on Windows, so using a process-safe lock
 # would be unnecessary.
@@ -338,7 +338,8 @@ CopyHelperOpts = namedtuple('CopyHelperOpts', [
     'canned_acl',
     'skip_unsupported_objects',
     'test_callback_file',
-    'dest_storage_class'])
+    'dest_storage_class',
+    'kms_keyname'])
 
 
 # pylint: disable=global-variable-undefined
@@ -346,7 +347,8 @@ def CreateCopyHelperOpts(perform_mv=False, no_clobber=False, daisy_chain=False,
                          read_args_from_stdin=False, print_ver=False,
                          use_manifest=False, preserve_acl=False,
                          canned_acl=None, skip_unsupported_objects=False,
-                         test_callback_file=None, dest_storage_class=None):
+                         test_callback_file=None, dest_storage_class=None,
+                         kms_keyname=None):
   """Creates CopyHelperOpts for passing options to CopyHelper."""
   # We create a tuple with union of options needed by CopyHelper and any
   # copy-related functionality in CpCommand, RsyncCommand, or Command class.
@@ -362,7 +364,8 @@ def CreateCopyHelperOpts(perform_mv=False, no_clobber=False, daisy_chain=False,
       canned_acl=canned_acl,
       skip_unsupported_objects=skip_unsupported_objects,
       test_callback_file=test_callback_file,
-      dest_storage_class=dest_storage_class)
+      dest_storage_class=dest_storage_class,
+      kms_keyname=kms_keyname)
   return global_copy_helper_opts
 
 
@@ -1141,7 +1144,8 @@ def _DoParallelCompositeUpload(fp, src_url, dst_url, dst_obj_metadata,
 
 
 def _ShouldDoParallelCompositeUpload(logger, allow_splitting, src_url, dst_url,
-                                     file_size, canned_acl=None):
+                                     file_size, canned_acl=None,
+                                     kms_keyname=None):
   """Determines whether parallel composite upload strategy should be used.
 
   Args:
@@ -1151,10 +1155,14 @@ def _ShouldDoParallelCompositeUpload(logger, allow_splitting, src_url, dst_url,
     dst_url: CloudUrl corresponding to destination cloud object.
     file_size: The size of the source file, in bytes.
     canned_acl: Canned ACL to apply to destination object, if any.
+    kms_keyname: Cloud KMS key name to encrypt destination, if any.
 
   Returns:
     True iff a parallel upload should be performed on the source file.
   """
+  if kms_keyname:
+    return False
+
   global suggested_slice_transfers, suggested_sliced_transfers_lock
   parallel_composite_upload_threshold = HumanReadableToBytes(config.get(
       'GSUtil', 'parallel_composite_upload_threshold',
@@ -1765,7 +1773,8 @@ def _UploadFileToObject(src_url, src_obj_filestream, src_obj_size,
 
   parallel_composite_upload = _ShouldDoParallelCompositeUpload(
       logger, allow_splitting, upload_url, dst_url, src_obj_size,
-      canned_acl=global_copy_helper_opts.canned_acl)
+      canned_acl=global_copy_helper_opts.canned_acl,
+      kms_keyname=dst_obj_metadata.kmsKeyName)
 
   if (src_url.IsStream() and
       gsutil_api.GetApiSelector(provider=dst_url.scheme) == ApiSelector.JSON):
@@ -3246,6 +3255,9 @@ def PerformCopy(logger, src_url, dst_url, gsutil_api,
 
   if global_copy_helper_opts.dest_storage_class:
     dst_obj_metadata.storageClass = global_copy_helper_opts.dest_storage_class
+
+  if global_copy_helper_opts.kms_keyname:
+    dst_obj_metadata.kmsKeyName = global_copy_helper_opts.kms_keyname
 
   _LogCopyOperation(logger, src_url, dst_url, dst_obj_metadata)
 

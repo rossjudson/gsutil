@@ -810,6 +810,9 @@ class GcsJsonApi(CloudApi):
       # Object is encrypted.
       return True
 
+    if object_metadata.kmsKeyName:
+      return False
+
     need_hash = fields is None or 'md5Hash' in fields or 'crc32c' in fields
     has_hash = object_metadata.md5Hash or object_metadata.crc32c
     if need_hash and not has_hash:
@@ -1373,6 +1376,7 @@ class GcsJsonApi(CloudApi):
               sourceObject=src_obj_metadata.name,
               destinationBucket=dst_obj_metadata.bucket,
               destinationObject=dst_obj_metadata.name,
+              destinationKmsKeyName=dst_obj_metadata.kmsKeyName,
               projection=projection, object=dst_obj_metadata,
               sourceGeneration=src_generation,
               ifGenerationMatch=preconditions.gen_match,
