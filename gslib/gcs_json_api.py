@@ -812,7 +812,7 @@ class GcsJsonApi(CloudApi):
 
     need_hash = fields is None or 'md5Hash' in fields or 'crc32c' in fields
     has_hash = object_metadata.md5Hash or object_metadata.crc32c
-    if need_hash and not has_hash:
+    if need_hash and not has_hash and not object_metadata.kmsKeyName:
       raise ServiceException('Service did not provide requested hashes, '
                              'but customerEncryption field is missing.')
 
@@ -1378,6 +1378,7 @@ class GcsJsonApi(CloudApi):
               ifGenerationMatch=preconditions.gen_match,
               ifMetagenerationMatch=preconditions.meta_gen_match,
               destinationPredefinedAcl=predefined_acl,
+              destinationKmsKeyName=dst_obj_metadata.kmsKeyName,
               rewriteToken=resume_rewrite_token,
               maxBytesRewrittenPerCall=max_bytes_per_call)
           rewrite_response = self.api_client.objects.Rewrite(
